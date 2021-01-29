@@ -1,0 +1,84 @@
+---
+#can use personal account
+- name: server_admin
+  hosts: ansible_clients
+  remote_user: dsimiyu 
+  become: true
+#Install packages
+tasks:
+- name: "Installing packages"
+  package:
+    name:
+      - apache2
+      - mysql-server
+      - libmysqlclient-dev
+      - mysqlclient
+    state: present
+
+#user accounts configuration
+- name: "Add users to root"
+  user:
+    name: {{ item }}
+    group: admin
+    with_items:   #loop
+          - dsimiyu
+          - rkorir
+          - jmutobu
+          - fhalkano
+#add folders for each user
+
+#set up database users
+- name: "Create database users with password and all database privileges"
+  community.mysql.mysql_user:
+    name: {{ item }}
+    password: 00000
+    priv: '*.*:ALL,GRANT'
+    state: present
+    with_items:
+          - dsimiyu
+          - rkorir
+          - jmutobu
+          - fhalkano
+#set password expiry to 30 days
+  vars:
+    users: ['dsimiyu', 'jmutobu','fhalkano','rkorir']
+    user_password_valid_time: 30
+  tasks:
+    - name: "Setting up passwords expiry dates"
+      shell: getent shadow "{{ item }}" | cut -d':' -f5
+      register: users_pw_valid
+      loop: users
+      changed_when: False
+    - name: set users password valid time
+      shell: chage -M "{{ user_password_valid_time }}" "{{ item['item'] }}"
+      loop: users_pw_valid.results
+      when: item.stdout is defined and item.stdout != {{ user_password_valid_time }}
+
+#Transfer project from local storage to VM
+tasks:
+- name: "Uploading project to VM"
+  community.general.kubevirt_cdi_upload:
+    pvc_namespace: default
+    pvc_name: pvc-vm1
+    upload_host: dsimiyu@134.122.103.69:/var/www/simiyudaniel.com/public_html
+    upload_host_validate_certs: false
+    path: C:\Users\user\Desktop\Projects\onlyevent
+    
+#Install virtual environment
+tasks:
+- name: "Installing venv package"
+  pip3:
+    name: 
+      - virtualenv
+
+#install packages to venv
+- name: Installing django to venv, using Python 2.7
+  pip3:
+    name: 
+      - django
+      - libmysqlclient-dev
+      - mysqlclient
+      - pillow
+    virtualenv: /onlyevents/venv
+    virtualenv_command: virtualenv-2.7
+---
