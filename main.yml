@@ -73,7 +73,7 @@ tasks:
 
 #install packages to venv
 - name: Installing django to venv, using Python 2.7
-  pip3:
+  pip:
     name: 
       - django
       - libmysqlclient-dev
